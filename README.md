@@ -1,6 +1,7 @@
 # ga-report-api
 Requisição em python do google analytics report api
 
+Passos<br>
 1- Criar conta no gcp <br>
 2- Ativar google analytics report api<br>
 3- Criar credencial<br>
