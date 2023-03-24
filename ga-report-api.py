@@ -82,7 +82,7 @@ def run_data(pageToken = 'unknown'):
 df = run_data()[0]
 
 #looping para pegar demais paginas
-while type(run_data()[1]) == str:
+while run_data()[1]:
     pageToken = run_data()[1]
     df2 = run_data(pageToken = pageToken)[0]
     df = pd.concat([df, df2]).reset_index(drop=True)
