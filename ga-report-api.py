@@ -6,12 +6,6 @@ import pandas as pd
 credentials = ServiceAccountCredentials.from_json_keyfile_name(r<local_do_arquiv>, ['https://www.googleapis.com/auth/analytics.readonly']) 
 
 
-#Criando parametros
-VIEW_ID = <id_da_conta>
-data_inicio = '30daysAgo'
-data_fim = 'today'
-
-
 def initialize_analyticsreporting():
     analytics = build('analyticsreporting', 'v4', credentials=credentials)
     return analytics
@@ -23,14 +17,16 @@ def get_report_visao_geral(analytics):
         'dateRanges': [{'startDate': data_inicio, 'endDate': data_fim}],
         'dimensions': [
             {'name': 'ga:date'},
-            {'name': 'ga:landingPagePath'}
+            {'name': 'ga:pagePath'}
         ], 
         'metrics': [
             {'expression': 'ga:sessions'},
-            {'expression': 'ga:transactions'},
-            {'expression': 'ga:transactionRevenue'},
+            {'expression': 'ga:transactions'}
         ],
-        "filtersExpression":"ga:sourceMedium==(direct) / (none)"
+        "filtersExpression":"ga:sourceMedium==(direct) / (none)",
+        'pageSize': pageSize,
+        'samplingLevel':'Large',
+        'pageToken': pageToken
     }]}).execute()
 
 
@@ -52,9 +48,44 @@ def response(response):
     # to dataframe
     df = pd.DataFrame(columns=headers, data=values)
     return df
-    
+
+#Pegando o token da consulta
+def get_PT(response):
+    for report in response.get('reports', []):
+        columnHeader = report.get('columnHeader', {})
+        dimensionHeaders = columnHeader.get('dimensions', [])
+        metricHeaders = columnHeader.get('metricHeader',
+                {}).get('metricHeaderEntries', [])
+        pageToken = report.get('nextPageToken', None)
+    return pageToken
+
+
+#Criando parametros
+VIEW_ID = <id_da_conta>
+data_inicio = '30daysAgo'
+data_fim = 'today'
+pageSize = 1000
+pageToken = 'unknown'
 
 #Realizando consulta
-analytics = initialize_analyticsreporting()
-response_visao_geral = get_report_visao_geral(analytics)
-df = response(response_visao_geral)
+def run_data(pageToken = 'unknown'):
+    analytics = initialize_analyticsreporting()
+    response_visao_geral = get_report_visao_geral(analytics)
+    df = response(response_visao_geral)
+    df['date'] = df['date'].astype('datetime64')
+    df['sessions'] = df['sessions'].astype('int64')
+    df['transactions'] = df['transactions'].astype('int64')
+    pageToken = get_PT(response_visao_geral)
+    return df, pageToken
+
+
+df = run_data()[0]
+
+#looping para pegar demais paginas
+while type(run_data()[1]) == str:
+    pageToken = run_data()[1]
+    df2 = run_data(pageToken = pageToken)[0]
+    df = pd.concat([df, df2]).reset_index(drop=True)
+    
+    
+    
